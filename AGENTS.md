@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Quick Commands (all Docker-based)
-
+gi
 - `make run` — start app + PostgreSQL (dev mode, auto-reload on `:8000`)
 - `make stop` / `make clean` — stop / stop + remove volumes
 - `make test-unit` — unit tests only (no DB needed)
