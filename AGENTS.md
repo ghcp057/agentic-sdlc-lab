@@ -19,7 +19,7 @@ Modular monolith organized by domain, not by technical layer. Three modules, eac
 |--------|-------|------------|
 | `app.modules.orders` | `models, schemas, routes, service, repository` | `GET/POST /orders/`, `PUT/DELETE /orders/{id}`, `POST /orders/{id}/cancel` |
 | `app.modules.users` | same | `POST /users/register`, `POST /users/login` |
-| `app.modules.payment` | same | `POST /payment/generate`, `POST /payment/pay/{order_id}`, `GET /payment/invoice/...`, `GET /payment/` |
+| `app.modules.payment` | same | `POST /payment/generate`, `POST /payment/pay/{order_id}`, `POST /payment/refund/{order_id}`, `GET /payment/invoice/...`, `GET /payment/` |
 
 - `app/api/router.py` — central router aggregating all module routers
 - `app/core/config.py` — `Settings` singleton; `AUTH_JWT_SECRET_KEY` env var is **mandatory** (raises `ValueError` if missing)

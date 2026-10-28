@@ -44,6 +44,24 @@ def pay_invoice(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/refund/{order_id}", response_model=schemas.InvoiceRead)
+def refund_invoice(
+    order_id: int,
+    db: Session = Depends(get_db),
+    invoice_repo: deps.InvoiceRepository = Depends(deps.get_payment_repository),
+    order_repo: deps.OrderRepository = Depends(deps.get_orders_repository),
+    _user: str = Depends(get_current_user),
+):
+    try:
+        return service.refund_invoice(db, invoice_repo, order_repo, order_id)
+    except InvoiceNotFoundError:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    except OrderNotFoundError:
+        raise HTTPException(status_code=404, detail="Order not found")
+    except PaymentError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/invoice/{invoice_id}", response_model=schemas.InvoiceRead)
 def get_invoice(
     invoice_id: int,

@@ -204,3 +204,34 @@ def test_list_invoices(client):
 def test_payment_without_auth_returns_401(client):
     response = client.get("/payment/")
     assert response.status_code == 401
+
+
+def test_refund_paid_invoice_cancels_invoice_and_order(client):
+    token = _login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    order_resp = client.post("/orders/", json={"item": "camera"}, headers=headers)
+    assert order_resp.status_code == 200
+    order_id = order_resp.json()["id"]
+
+    invoice_resp = client.post(
+        "/payment/generate", json={"order_id": order_id}, headers=headers
+    )
+    assert invoice_resp.status_code == 200
+
+    pay_resp = client.post(f"/payment/pay/{order_id}", headers=headers)
+    assert pay_resp.status_code == 200
+
+    refund_resp = client.post(f"/payment/refund/{order_id}", headers=headers)
+    assert refund_resp.status_code == 200
+    assert refund_resp.json()["status"] == "cancelled"
+
+    invoice_resp = client.get(
+        f"/payment/invoice/{invoice_resp.json()['id']}", headers=headers
+    )
+    assert invoice_resp.status_code == 200
+    assert invoice_resp.json()["status"] == "cancelled"
+
+    order_resp = client.get(f"/orders/{order_id}", headers=headers)
+    assert order_resp.status_code == 200
+    assert order_resp.json()["status"] == "cancelled"
