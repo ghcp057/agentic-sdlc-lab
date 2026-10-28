@@ -1,0 +1,11 @@
+/.github/workflows/                      @ghcpo57
+/.github/agents/                         @ghcpo57
+/.github/instructions/                   @ghcpo57
+/.github/copilot-instructions.md         @ghcpo57
+/.github/CODEOWNERS                      @ghcpo57
+/.vscode/mcp.json                        @ghcpo57
+/AGENTS.md                               @ghcpo57
+/alembic/                                @ghcpo57
+/pyproject.toml                          @ghcpo57
+/docker-compose.yml                      @ghcpo57
+/docker-compose.unittests.yml            @ghcpo57

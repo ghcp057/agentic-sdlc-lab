@@ -52,7 +52,15 @@ class OrderStateMachine:
 def create_order(repo: repository.OrderRepository, user_id: int, item: str):
     if item is None or not str(item).strip():
         raise ValueError("Order item cannot be blank")
-    return repo.create_order(user_id, str(item).strip())
+    order = repo.create_order(user_id, str(item).strip())
+    try:
+        repo.add_history(order.id, order.status)
+        repo._db.commit()
+        repo._db.refresh(order)
+    except Exception:
+        repo._db.rollback()
+        raise
+    return order
 
 
 def get_order(repo: repository.OrderRepository, order_id: int):
@@ -60,6 +68,12 @@ def get_order(repo: repository.OrderRepository, order_id: int):
     if not order:
         raise OrderNotFoundError()
     return order
+
+
+def get_order_history(repo: repository.OrderRepository, order_id: int):
+    if not repo.get_order(order_id):
+        raise OrderNotFoundError()
+    return repo.list_history(order_id)
 
 
 def list_orders(repo: repository.OrderRepository, user_id: int | None = None, status: str | None = None, search: str | None = None, page: int = 1, page_size: int = 20):
@@ -78,6 +92,11 @@ def update_order(db: Session, repo: repository.OrderRepository, order_id: int, *
     if not order:
         raise OrderNotFoundError()
 
+    status_changed = (
+        "status" in kwargs
+        and kwargs["status"] is not None
+        and kwargs["status"] != order.status
+    )
     if "status" in kwargs and kwargs["status"] is not None:
         OrderStateMachine.validate_transition(order.status, kwargs["status"])
 
@@ -85,6 +104,8 @@ def update_order(db: Session, repo: repository.OrderRepository, order_id: int, *
         if value is not None:
             setattr(order, key, value)
     try:
+        if status_changed:
+            repo.add_history(order_id, models.OrderStatus(kwargs["status"]))
         db.commit()
         db.refresh(order)
     except Exception:
@@ -122,6 +143,7 @@ def cancel_order(db: Session, repo: repository.OrderRepository, order_id: int):
 
     order.status = models.OrderStatus.CANCELLED
     try:
+        repo.add_history(order_id, order.status)
         db.commit()
         db.refresh(order)
     except Exception:

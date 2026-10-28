@@ -48,6 +48,21 @@ def get_order(
     return order
 
 
+@router.get("/{order_id}/history", response_model=list[schemas.OrderStatusHistoryRead])
+def get_order_history(
+    order_id: int,
+    repo: deps.OrderRepository = Depends(deps.get_orders_repository),
+    user: UserModel = Depends(get_current_user_obj),
+):
+    try:
+        service.require_order_ownership(repo, order_id, user.id)
+        return service.get_order_history(repo, order_id)
+    except OrderNotFoundError:
+        raise HTTPException(status_code=404, detail="Order not found")
+    except OrderOwnershipError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+
 @router.get("/", response_model=schemas.PaginatedOrders)
 def list_orders(
     page: int = 1,

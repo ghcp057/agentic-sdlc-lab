@@ -9,9 +9,24 @@ class OrderRepository:
     def create_order(self, user_id: int, item: str):
         order = models.Order(user_id=user_id, item=item)
         self._db.add(order)
-        self._db.commit()
-        self._db.refresh(order)
+        self._db.flush()
         return order
+
+    def add_history(self, order_id, status):
+        self._db.add(
+            models.OrderStatusHistory(order_id=order_id, status=status)
+        )
+
+    def list_history(self, order_id: int):
+        return (
+            self._db.query(models.OrderStatusHistory)
+            .filter(models.OrderStatusHistory.order_id == order_id)
+            .order_by(
+                models.OrderStatusHistory.changed_at,
+                models.OrderStatusHistory.id,
+            )
+            .all()
+        )
 
     def get_order(self, order_id: int):
         return self._db.query(models.Order).filter(models.Order.id == order_id).first()
@@ -42,6 +57,9 @@ class OrderRepository:
         order = self._db.query(models.Order).filter(models.Order.id == order_id).first()
         if not order:
             raise ValueError("Order not found")
+        self._db.query(models.OrderStatusHistory).filter(
+            models.OrderStatusHistory.order_id == order_id
+        ).delete(synchronize_session=False)
         self._db.delete(order)
         return True
 

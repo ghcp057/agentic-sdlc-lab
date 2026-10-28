@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from .models import OrderStatus
+from datetime import datetime
 
 
 class OrderCreate(BaseModel):
@@ -17,6 +18,13 @@ class OrderRead(BaseModel):
     user_id: int
     item: str
     status: OrderStatus
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OrderStatusHistoryRead(BaseModel):
+    status: OrderStatus
+    changed_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
