@@ -146,8 +146,9 @@ def test_fsm_invalid_transitions(current, target):
         OrderStateMachine.validate_transition(current, target)
 
 
-def test_delivered_is_terminal():
-    assert OrderStateMachine.TRANSITIONS[models.OrderStatus.DELIVERED] == []
+def test_delivered_only_leads_to_returned():
+    # Decision (issue 5 owner): DELIVERED is terminal except for returns.
+    assert OrderStateMachine.TRANSITIONS[models.OrderStatus.DELIVERED] == [models.OrderStatus.RETURNED]
 
 
 def test_fsm_unknown_current_status():

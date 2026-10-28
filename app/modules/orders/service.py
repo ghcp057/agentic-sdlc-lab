@@ -27,9 +27,16 @@ class OrderStateMachine:
         models.OrderStatus.SHIPPED: [
             models.OrderStatus.DELIVERED
         ],
-        models.OrderStatus.DELIVERED: [],
+        models.OrderStatus.DELIVERED: [
+            models.OrderStatus.RETURNED,
+        ],
+        models.OrderStatus.RETURNED: [],
         models.OrderStatus.CANCELLED: [],
     }
+
+    @classmethod
+    def is_terminal(cls, status: models.OrderStatus) -> bool:
+        return cls.TRANSITIONS.get(status) == []
 
     @classmethod
     def validate_transition(cls, current: models.OrderStatus, target: models.OrderStatus) -> None:
@@ -100,6 +107,11 @@ def cancel_order(db: Session, repo: repository.OrderRepository, order_id: int):
 
     if order.status == models.OrderStatus.CANCELLED:
         raise OrderOwnershipError("Order is already cancelled")
+    if order.status in {
+        models.OrderStatus.DELIVERED,
+        models.OrderStatus.RETURNED,
+    }:
+        raise OrderOwnershipError("Order cannot be cancelled")
 
     order.status = models.OrderStatus.CANCELLED
     try:
