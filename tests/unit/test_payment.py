@@ -153,6 +153,17 @@ def test_mark_invoice_paid_already_paid():
         assert "already marked as paid" in str(e)
 
 
+def test_mark_invoice_paid_rejects_cancelled_invoice():
+    invoice = _make_invoice(status=payment_models.InvoiceStatus.CANCELLED)
+    invoice_repo = _make_mock_invoice_repo(invoice)
+    invoice_repo.get_invoice.return_value = invoice
+
+    with pytest.raises(PaymentError, match="cancelled invoice"):
+        service.mark_invoice_paid(_make_db(), invoice_repo, _make_mock_order_repo(), 1)
+
+    invoice_repo.mark_invoice_paid_and_update_order.assert_not_called()
+
+
 # ── mark_invoice_paid_by_order_id tests ─────────────────────────────────────
 
 
@@ -196,6 +207,19 @@ def test_mark_invoice_paid_already_paid():
         assert False, "Should have raised PaymentError"
     except PaymentError as e:
         assert "already marked as paid" in str(e)
+
+
+def test_mark_invoice_paid_by_order_id_rejects_cancelled_invoice():
+    invoice = _make_invoice(status=payment_models.InvoiceStatus.CANCELLED)
+    invoice_repo = _make_mock_invoice_repo(invoice)
+    invoice_repo.get_invoice_by_order_id.return_value = invoice
+
+    with pytest.raises(PaymentError, match="cancelled invoice"):
+        service.mark_invoice_paid_by_order_id(
+            _make_db(), invoice_repo, _make_mock_order_repo(), 1
+        )
+
+    invoice_repo.mark_invoice_paid_and_update_order.assert_not_called()
 
 
 # ── get_invoice tests ──────────────────────────────────────────────────────
@@ -258,6 +282,17 @@ def test_list_invoices():
     assert result[0].order_id == 1
     assert result[1].order_id == 2
     assert total == 2
+
+
+def test_list_invoices_caps_page_size_and_normalizes_page():
+    invoice_repo = _make_mock_invoice_repo()
+    invoice_repo.list_invoices.return_value = ([], 0)
+
+    service.list_invoices(invoice_repo, page=0, page_size=150)
+
+    invoice_repo.list_invoices.assert_called_once_with(
+        status=None, search=None, page=1, page_size=100
+    )
 
 
 # ── refund_invoice tests ────────────────────────────────────────────────────

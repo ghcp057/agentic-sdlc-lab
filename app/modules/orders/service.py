@@ -27,7 +27,9 @@ class OrderStateMachine:
         models.OrderStatus.SHIPPED: [
             models.OrderStatus.DELIVERED
         ],
-        models.OrderStatus.DELIVERED: [],
+        models.OrderStatus.DELIVERED: [
+            models.OrderStatus.RETURNED,
+        ],
         models.OrderStatus.RETURNED: [],
         models.OrderStatus.CANCELLED: [],
     }
@@ -48,7 +50,9 @@ class OrderStateMachine:
 
 
 def create_order(repo: repository.OrderRepository, user_id: int, item: str):
-    return repo.create_order(user_id, item)
+    if item is None or not str(item).strip():
+        raise ValueError("Order item cannot be blank")
+    return repo.create_order(user_id, str(item).strip())
 
 
 def get_order(repo: repository.OrderRepository, order_id: int):
@@ -59,7 +63,12 @@ def get_order(repo: repository.OrderRepository, order_id: int):
 
 
 def list_orders(repo: repository.OrderRepository, user_id: int | None = None, status: str | None = None, search: str | None = None, page: int = 1, page_size: int = 20):
-    items, total = repo.list_orders(user_id=user_id, status=status, search=search, page=page, page_size=page_size)
+    page = max(int(page or 1), 1)
+    page_size = max(min(int(page_size or 20), 100), 1)
+    result = repo.list_orders(user_id=user_id, status=status, search=search, page=page, page_size=page_size)
+    if not isinstance(result, tuple) or len(result) != 2:
+        return [], 0
+    items, total = result
     return items, total
 
 

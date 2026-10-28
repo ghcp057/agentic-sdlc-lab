@@ -77,10 +77,15 @@ def mark_invoice_paid(db: Session, invoice_repo: repository.InvoiceRepository, o
 
     if invoice.status == payment_models.InvoiceStatus.PAID:
         raise PaymentError("Invoice is already marked as paid")
+    if invoice.status == payment_models.InvoiceStatus.CANCELLED:
+        raise PaymentError("Cannot pay a cancelled invoice")
 
-    invoice, order = invoice_repo.mark_invoice_paid_and_update_order(
+    result = invoice_repo.mark_invoice_paid_and_update_order(
         invoice_id, invoice.order_id, order_models.OrderStatus.FULFILLED
     )
+    if not isinstance(result, tuple) or len(result) != 2:
+        raise PaymentError("Invoice payment update failed")
+    invoice, _order = result
     return invoice
 
 
@@ -98,10 +103,15 @@ def mark_invoice_paid_by_order_id(db: Session, invoice_repo: repository.InvoiceR
 
     if invoice.status == payment_models.InvoiceStatus.PAID:
         raise PaymentError("Invoice is already marked as paid")
+    if invoice.status == payment_models.InvoiceStatus.CANCELLED:
+        raise PaymentError("Cannot pay a cancelled invoice")
 
-    invoice, order = invoice_repo.mark_invoice_paid_and_update_order(
+    result = invoice_repo.mark_invoice_paid_and_update_order(
         invoice.id, order_id, order_models.OrderStatus.FULFILLED
     )
+    if not isinstance(result, tuple) or len(result) != 2:
+        raise PaymentError("Invoice payment update failed")
+    invoice, _order = result
     return invoice
 
 
@@ -133,7 +143,12 @@ def get_invoice_by_order(invoice_repo: repository.InvoiceRepository, order_id: i
 
 
 def list_invoices(invoice_repo: repository.InvoiceRepository, status: str | None = None, search: str | None = None, page: int = 1, page_size: int = 20):
-    items, total = invoice_repo.list_invoices(status=status, search=search, page=page, page_size=page_size)
+    page = max(int(page or 1), 1)
+    page_size = max(min(int(page_size or 20), 100), 1)
+    result = invoice_repo.list_invoices(status=status, search=search, page=page, page_size=page_size)
+    if not isinstance(result, tuple) or len(result) != 2:
+        return [], 0
+    items, total = result
     return items, total
 
 

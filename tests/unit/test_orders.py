@@ -32,6 +32,15 @@ def test_create_order():
     assert result == repo.create_order.return_value
 
 
+def test_create_order_rejects_blank_item():
+    repo = _make_mock_repo()
+
+    with pytest.raises(ValueError, match="cannot be blank"):
+        service.create_order(repo, 1, " \t ")
+
+    repo.create_order.assert_not_called()
+
+
 def test_get_order():
     order = _make_order()
     repo = _make_mock_repo(order=order)
@@ -56,6 +65,17 @@ def test_list_orders():
     assert result[0].item == "a"
     assert result[1].item == "b"
     assert total == 2
+
+
+def test_list_orders_caps_page_size_and_normalizes_page():
+    repo = _make_mock_repo()
+    repo.list_orders.return_value = ([], 0)
+
+    service.list_orders(repo, page=0, page_size=150)
+
+    repo.list_orders.assert_called_once_with(
+        user_id=None, status=None, search=None, page=1, page_size=100
+    )
 
 
 def test_update_order_status():
@@ -149,6 +169,19 @@ def test_fsm_invalid_transitions(current, target):
 def test_delivered_only_leads_to_returned():
     # Decision (issue 5 owner): DELIVERED is terminal except for returns.
     assert OrderStateMachine.TRANSITIONS[models.OrderStatus.DELIVERED] == [models.OrderStatus.RETURNED]
+
+
+@pytest.mark.parametrize(
+    "status, expected",
+    [
+        (models.OrderStatus.DELIVERED, False),
+        (models.OrderStatus.CANCELLED, True),
+        (models.OrderStatus.RECEIVED, False),
+        (models.OrderStatus.RETURNED, True),
+    ],
+)
+def test_fsm_is_terminal(status, expected):
+    assert OrderStateMachine.is_terminal(status) is expected
 
 
 def test_fsm_unknown_current_status():
