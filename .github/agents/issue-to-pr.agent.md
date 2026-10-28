@@ -14,3 +14,9 @@ First action: read docs/agent-state/<issue>.md. Verify it against git log --onel
 After every step: tick it, update last_commit and heartbeat, run the unit tests, then commit with the message "step N: ...".
 Never record secrets, tokens or pasted source code in the state file.
 If you cannot continue, set status: blocked and write the question under Open questions.
+
+## State protocol
+- First action: read docs/agent-state/<issue>.md. Verify it against `git log --oneline -5` and the unit tests before continuing. If the file and the branch disagree, the branch wins: fix the file.
+- After every step: tick it, update last_commit and heartbeat, run the unit tests, then commit with the message "step N: ...".
+- Never record secrets, tokens or pasted source code in the state file.
+- If you cannot continue, set status: blocked and write the question under Open questions.
