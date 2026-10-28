@@ -74,3 +74,28 @@ class InvoiceRepository:
         self._db.refresh(invoice)
         self._db.refresh(order)
         return invoice, order
+
+    def refund_invoice_and_cancel_order(self, invoice_id: int, order_id: int):
+        """Atomically mark an invoice as CANCELLED and cancel its order."""
+        from app.modules.orders import models as order_models
+        from app.modules.orders.exceptions import OrderNotFoundError
+
+        invoice = self._db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+        if not invoice:
+            raise ValueError("Invoice not found")
+
+        order = self._db.query(order_models.Order).filter(order_models.Order.id == order_id).first()
+        if not order:
+            self._db.rollback()
+            raise OrderNotFoundError()
+
+        invoice.status = models.InvoiceStatus.CANCELLED
+        order.status = order_models.OrderStatus.CANCELLED
+        try:
+            self._db.commit()
+            self._db.refresh(invoice)
+            self._db.refresh(order)
+        except Exception:
+            self._db.rollback()
+            raise
+        return invoice, order

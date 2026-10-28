@@ -258,3 +258,41 @@ def test_list_invoices():
     assert result[0].order_id == 1
     assert result[1].order_id == 2
     assert total == 2
+
+
+# ── refund_invoice tests ────────────────────────────────────────────────────
+
+
+def test_refund_invoice_success():
+    invoice = _make_invoice(status=payment_models.InvoiceStatus.PAID)
+    db = _make_db()
+    order_repo = _make_mock_order_repo()
+    invoice_repo = _make_mock_invoice_repo(invoice)
+    invoice_repo.refund_invoice_and_cancel_order = MagicMock(return_value=(invoice, MagicMock()))
+
+    result = service.refund_invoice(db, invoice_repo, order_repo, 1)
+
+    assert result == invoice
+    invoice_repo.refund_invoice_and_cancel_order.assert_called_once_with(invoice.id, 1)
+
+
+def test_refund_invoice_not_found():
+    db = _make_db()
+    order_repo = _make_mock_order_repo()
+    invoice_repo = _make_mock_invoice_repo(None)
+    invoice_repo.get_invoice_by_order_id.return_value = None
+
+    with pytest.raises(InvoiceNotFoundError):
+        service.refund_invoice(db, invoice_repo, order_repo, 999)
+
+
+def test_refund_invoice_not_paid():
+    invoice = _make_invoice(status=payment_models.InvoiceStatus.PENDING)
+    db = _make_db()
+    order_repo = _make_mock_order_repo()
+    invoice_repo = _make_mock_invoice_repo(invoice)
+
+    with pytest.raises(PaymentError, match="Only paid invoices"):
+        service.refund_invoice(db, invoice_repo, order_repo, 1)
+
+    invoice_repo.refund_invoice_and_cancel_order.assert_not_called()

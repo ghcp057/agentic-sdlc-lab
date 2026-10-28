@@ -105,6 +105,19 @@ def mark_invoice_paid_by_order_id(db: Session, invoice_repo: repository.InvoiceR
     return invoice
 
 
+def refund_invoice(db: Session, invoice_repo: repository.InvoiceRepository, order_repo: order_repo.OrderRepository, order_id: int):
+    """Refund a paid invoice and cancel its associated order atomically."""
+    invoice = invoice_repo.get_invoice_by_order_id(order_id)
+    if not invoice:
+        raise InvoiceNotFoundError(f"No invoice found for order {order_id}")
+
+    if invoice.status != payment_models.InvoiceStatus.PAID:
+        raise PaymentError("Only paid invoices can be refunded")
+
+    invoice, _order = invoice_repo.refund_invoice_and_cancel_order(invoice.id, order_id)
+    return invoice
+
+
 def get_invoice(invoice_repo: repository.InvoiceRepository, invoice_id: int):
     invoice = invoice_repo.get_invoice(invoice_id)
     if not invoice:
