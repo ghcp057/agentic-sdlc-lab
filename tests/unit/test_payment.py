@@ -68,6 +68,22 @@ def test_generate_invoice_success():
     mock_update.assert_called_once()
 
 
+def test_generate_invoice_records_order_history():
+    order = _make_order(status="received")
+    invoice = _make_invoice()
+    order_repo = _make_mock_order_repo(order)
+    invoice_repo = _make_mock_invoice_repo()
+    invoice_repo.get_invoice_by_order_id.return_value = None
+    invoice_repo.create_invoice.return_value = invoice
+
+    with patch.object(service, "_call_payment_api_create_invoice", return_value="inv-test123"):
+        service.generate_invoice(_make_db(), order_repo, invoice_repo, 1)
+
+    order_repo.add_history.assert_called_once_with(
+        1, order_models.OrderStatus.PROCESSING
+    )
+
+
 def test_generate_invoice_order_not_found():
     order_repo = _make_mock_order_repo(None)
     invoice_repo = _make_mock_invoice_repo()
@@ -126,6 +142,21 @@ def test_mark_invoice_paid_success():
     invoice_repo.mark_invoice_paid_and_update_order.assert_called_once_with(1, 1, order_models.OrderStatus.FULFILLED)
 
 
+def test_mark_invoice_paid_records_order_history():
+    order = _make_order()
+    invoice = _make_invoice(status="pending")
+    order_repo = _make_mock_order_repo(order)
+    invoice_repo = _make_mock_invoice_repo(invoice)
+    invoice_repo.get_invoice.return_value = invoice
+    invoice_repo.mark_invoice_paid_and_update_order.return_value = (invoice, order)
+
+    service.mark_invoice_paid(_make_db(), invoice_repo, order_repo, 1)
+
+    order_repo.add_history.assert_called_once_with(
+        1, order_models.OrderStatus.FULFILLED
+    )
+
+
 def test_mark_invoice_paid_not_found():
     db = _make_db()
     order_repo = _make_mock_order_repo()
@@ -180,6 +211,21 @@ def test_mark_invoice_paid_by_order_id_success():
 
     assert result == invoice
     invoice_repo.mark_invoice_paid_and_update_order.assert_called_once_with(1, 1, order_models.OrderStatus.FULFILLED)
+
+
+def test_mark_invoice_paid_by_order_id_records_order_history():
+    order = _make_order()
+    invoice = _make_invoice(status="pending")
+    order_repo = _make_mock_order_repo(order)
+    invoice_repo = _make_mock_invoice_repo(invoice)
+    invoice_repo.get_invoice_by_order_id.return_value = invoice
+    invoice_repo.mark_invoice_paid_and_update_order.return_value = (invoice, order)
+
+    service.mark_invoice_paid_by_order_id(_make_db(), invoice_repo, order_repo, 1)
+
+    order_repo.add_history.assert_called_once_with(
+        1, order_models.OrderStatus.FULFILLED
+    )
 
 
 def test_mark_invoice_paid_invoice_not_found():
@@ -309,6 +355,21 @@ def test_refund_invoice_success():
 
     assert result == invoice
     invoice_repo.refund_invoice_and_cancel_order.assert_called_once_with(invoice.id, 1)
+
+
+def test_refund_invoice_records_order_history():
+    invoice = _make_invoice(status=payment_models.InvoiceStatus.PAID)
+    order_repo = _make_mock_order_repo()
+    invoice_repo = _make_mock_invoice_repo(invoice)
+    invoice_repo.refund_invoice_and_cancel_order = MagicMock(
+        return_value=(invoice, MagicMock())
+    )
+
+    service.refund_invoice(_make_db(), invoice_repo, order_repo, 1)
+
+    order_repo.add_history.assert_called_once_with(
+        1, order_models.OrderStatus.CANCELLED
+    )
 
 
 def test_refund_invoice_not_found():

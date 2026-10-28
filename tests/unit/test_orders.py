@@ -32,6 +32,16 @@ def test_create_order():
     assert result == repo.create_order.return_value
 
 
+def test_create_order_records_initial_history():
+    order = _make_order(status=models.OrderStatus.RECEIVED)
+    repo = _make_mock_repo()
+    repo.create_order.return_value = order
+
+    service.create_order(repo, 1, "laptop")
+
+    repo.add_history.assert_called_once_with(order.id, models.OrderStatus.RECEIVED)
+
+
 def test_create_order_rejects_blank_item():
     repo = _make_mock_repo()
 
@@ -88,6 +98,15 @@ def test_update_order_status():
     db.refresh.assert_called_once_with(order)
 
 
+def test_update_order_status_records_history():
+    order = _make_order(status=models.OrderStatus.RECEIVED)
+    repo = _make_mock_repo(order=order)
+
+    service.update_order(_make_db(), repo, 1, status=models.OrderStatus.PROCESSING)
+
+    repo.add_history.assert_called_once_with(1, models.OrderStatus.PROCESSING)
+
+
 def test_update_order_item():
     order = _make_order()
     repo = _make_mock_repo(order=order)
@@ -95,6 +114,16 @@ def test_update_order_item():
     result = service.update_order(db, repo, 1, item="new_item")
     assert result.item == "new_item"
     assert result.status == "received"
+    repo.add_history.assert_not_called()
+
+
+def test_cancel_order_records_history():
+    order = _make_order(status=models.OrderStatus.RECEIVED)
+    repo = _make_mock_repo(order=order)
+
+    service.cancel_order(_make_db(), repo, 1)
+
+    repo.add_history.assert_called_once_with(1, models.OrderStatus.CANCELLED)
 
 
 def test_update_order_not_found():
