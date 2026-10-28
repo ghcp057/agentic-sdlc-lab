@@ -146,6 +146,10 @@ def test_fsm_invalid_transitions(current, target):
         OrderStateMachine.validate_transition(current, target)
 
 
+def test_delivered_is_terminal():
+    assert OrderStateMachine.TRANSITIONS[models.OrderStatus.DELIVERED] == []
+
+
 def test_fsm_unknown_current_status():
     with pytest.raises(InvalidOrderTransition):
         OrderStateMachine.validate_transition("unknown", models.OrderStatus.PROCESSING)
